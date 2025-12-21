@@ -24,9 +24,7 @@ int Inet::create_socket() {
     	_log_stream << "failed to init socket\n";
     	return -1;
     }
-    _log_stream << "connecting" << endl;
     
-
     return sock;
 }
 
@@ -34,16 +32,20 @@ int Inet::create_socket() {
 // set on the INET bus through the passed
 // socket
 Inet_Ret_Code Inet::socket_connect(int _socket) {
+	_log_stream << "connecting socket " << _socket << endl;
 	int st = connect(_socket, (struct sockaddr *)&GlobalInetBus.addr,
 	            sizeof(GlobalInetBus.addr));
-	if (st == 0)
+	if (st == 0) {
+		_log_stream << "socket " << _socket << " connected\n";
 		return INET_SUCCESS;
-	else
+	} else {
+		_log_stream << "failed to connect socket " << _socket << endl;
 		return INET_CONN_FAILED;
+	}
 }
 
 Inet_Ret_Code Inet::send_data(int _socket, const string &_buffer) {
-	_log_stream << "sending data over socket; sock=" << _socket << "; data=" << _buffer << endl;
+	_log_stream << "sending data over socket " << _socket << "; data=" << _buffer << endl;
     int code = send(_socket, _buffer.c_str(), _buffer.size(), 0);
     if (code == 0) {
     	_log_stream << "data send successfully\n";
@@ -58,7 +60,7 @@ Inet_Ret_Code Inet::read_data(int _socket, string &_buffer, size_t _size, size_t
     // Allocate a char buffer, read bytes into it,
     // copy it to the string buffer passed as the
     // argument and free the allocated buffer.
-	_log_stream << "reading data over socket; socket=" << _socket << endl; 
+	_log_stream << "reading data over socket " << _socket << endl; 
 
 	fd_set readfds;
     FD_ZERO(&readfds);
