@@ -94,7 +94,7 @@ Scan_Ret_Code scan_port(size_t _port) {
 int main() {
 	signal(SIGPIPE, handle_signal);
 	inet << "core started\n";
-    global_inetbus_init("127.0.0.1");
+    global_inetbus_init("192.168.1.54");
     inet << "inetbus inited\n";
 
 	size_t start, end;
@@ -105,7 +105,6 @@ int main() {
         if (get_port_state(i) == SCAN_PORT_OPENED)
         	scanned_ports.push_back(Opened_Port_Entry{(size_t)i, "test"});
     }
-
 	for (auto i : scanned_ports) {
 		cout << i.port << "\t" << i.service << " opened" << endl;
 	}
