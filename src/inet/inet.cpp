@@ -62,6 +62,7 @@ Inet_Ret_Code Inet::read_data(int _socket, string &_buffer, size_t _size, size_t
     // argument and free the allocated buffer.
 	_log_stream << "reading data over socket " << _socket << endl; 
 
+	// Timeout logic
 	fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(_socket, &readfds);
@@ -72,7 +73,7 @@ Inet_Ret_Code Inet::read_data(int _socket, string &_buffer, size_t _size, size_t
 
     int rv = select(_socket + 1, &readfds, NULL, NULL, &tv);
     if (rv == -1) {
-        perror("select error");
+        perror("select error; read_data() of inet.cpp");
         return INET_ITERNAL_ERR;
     } else if (rv == 0) {
         // Timeout
