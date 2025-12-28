@@ -1,9 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <iostream>
-#include <string>
-using namespace std;
+#include <unistd.h>
 
 enum Generic_Ret_Code {
 	GEN_SUCCESS,
@@ -30,7 +28,7 @@ enum Scan_Ret_Code {
 
 struct Opened_Port_Entry {
 	 size_t port;
-	 string service;
+	 char service[30];
 };
 
 struct Port_Range {
