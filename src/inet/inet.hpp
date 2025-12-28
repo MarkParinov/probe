@@ -18,7 +18,7 @@ class Inet {
     	remove("./inet_log");
    		_log_stream.open("./inet_log", ios::out | ios::app);
         if (!_log_stream) {
-            throw runtime_error("Failed to open log file");
+            throw runtime_error("failed to open log file");
         }
    	}
 
@@ -34,8 +34,10 @@ class Inet {
         return *this;
     }
     
-    // 	Inet
-    int create_socket();
+    // Inet
+    int init_raw_socket();
+	int init_socket();
+    
     Inet_Ret_Code socket_connect(int _socket);
 
     Inet_Ret_Code send_data(int _socket, const string &_buffer);

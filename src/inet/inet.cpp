@@ -14,10 +14,20 @@
 #include "../inetbus/inetbus.hpp"
 // custom types
 #include "../types.hpp"
-
 using namespace std;
 
-int Inet::create_socket() {
+int Inet::init_raw_socket() {
+	_log_stream << "initing a raw socket" << endl;
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+    if (sock <= -1) {
+    	_log_stream << "failed to init raw socket\n";
+    	return -1;
+    }
+    
+    return sock;
+}
+
+int Inet::init_socket() {
 	_log_stream << "initing a socket" << endl;
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock <= -1) {

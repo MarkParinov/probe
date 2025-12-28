@@ -7,6 +7,7 @@ InetBus GlobalInetBus;
 // Match the BUS' attributes to each other, very specific
 // operations, for example matching _port to _addr's 
 // sin_port field
+
 void InetBus::update() {
     addr.sin_port = htons(_port);
 }
@@ -15,7 +16,7 @@ void InetBus::update() {
 void InetBus::init(const string &_trgt) {
 	_target = _trgt;
 	_port = 0;
-
+	
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	
