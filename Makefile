@@ -1,2 +1,2 @@
 all:
-	g++ src/*/*.cpp -o ./bin/probe
+	gcc src/*/*.c -o ./bin/probe
