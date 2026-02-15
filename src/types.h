@@ -15,7 +15,7 @@
 #define PORT_ACCUR_PTS_DIGIT 	1 << 6
 #define PORT_ACCUR_BANNER_DIGIT	1 << 7
 
-#define INET_TIMEOUT_USEC (size_t)5000
+#define INET_TIMEOUT_USEC (size_t)20000
 
 /*
 	Return codes

@@ -123,10 +123,8 @@ void core_get_server_banner(char* _buffer) {
 		return;
 	
 	enum Inet_Ret_Code ret = inet_connect_socket(sock, INET_TIMEOUT_USEC);
-	if (ret != 0) {
-		printf("conenction failed\n");
+	if (ret != INET_SUCCESS)
 		return;
-	}
 
 	memset(_buffer, 0, SERVICE_BANNER_MAX_LEN);
 

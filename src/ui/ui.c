@@ -21,7 +21,12 @@ void banner() {
 	printf("~ Target IP: %s\n", ad);
 	printf("~ Port range: %zu-%zu\n",
 	UI_PORT_RANGE_START, UI_PORT_RANGE_END); printf("\n");
-	printf("host name = '%s'\n", GlobalInetBus.host_name);
+	/*printf("host name = '%s'\n", GlobalInetBus.host_name);*/
+}
+
+void print_progress(size_t port) {
+    printf("\rprobing %zu port...", port);
+    fflush(stdout);
 }
 
 int main(int argc, char* argv[]) {
@@ -59,15 +64,21 @@ int main(int argc, char* argv[]) {
    	size_t ports_scanned = 0;
    	float average_accuracy = 0;
 
-    printf("PORT\tSERVICE");
-    for (int i = strlen("SERVICE"); i < UI_SERVICE_PRINT_PADDING; i++)
-       		printf(" ");
-    printf("ACCURACY\n");
+    int header_printed = 0;
 
     for (size_t i = UI_PORT_RANGE_START; i < UI_PORT_RANGE_END; i++) {
     	/* core_scan_port(i); */
-    	printf("port %zu\n", i);
+    	print_progress(i);
         if (core_get_port_state(i, INET_TIMEOUT_USEC) == SCAN_PORT_OPENED) {
+			if (!header_printed) {
+				printf("\r\033[K");
+				printf("\rPORT\tSERVICE");
+			    for (int i = strlen("SERVICE"); i < UI_SERVICE_PRINT_PADDING; i++)
+			       		printf(" ");
+			    printf("ACCURACY\n");
+			    header_printed = 1;
+			}
+			
         	struct Port_Report rep; memset(&rep, 0, sizeof(rep));
         	/* set report port */
         	rep.port = i;
@@ -77,7 +88,8 @@ int main(int argc, char* argv[]) {
         	core_match_accur_pts(&rep);
         	core_match_accur_bts(banner_buf, &rep);
         	/* print info */
-        	printf("%zu\t%s", rep.port, rep.service);
+        	printf("\r\033[K");
+        	printf("\r%zu\t%s", rep.port, rep.service);
         	for (int i = strlen(rep.service); i < UI_SERVICE_PRINT_PADDING; i++)
         		printf(" ");
         	printf("%05.2f%%\n", (float)(rep.accur*100)/255);
@@ -87,13 +99,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    printf("\nScan completed with:\n");
-    printf("~ %zu opened ports (%zu not shown)\n",
-    ports_scanned, UI_PORT_RANGE_END-UI_PORT_RANGE_START-ports_scanned);
-    printf("~ Average accuracy: %05.2f%%\n", average_accuracy/ports_scanned);
-	// for (auto i : scanned_ports) {
-	// 	cout << i.port << "\t" << i.service << " opened" << endl;
-	// }
+    printf("\r\033[K");
+    
+    if (!ports_scanned) {
+    	printf("Scan completed with no active ports.\n");
+    	printf("Try adjusting the connection timeout in microseconds\n");
+		printf("with a value greater than %zu.\n", INET_TIMEOUT_USEC);
+    } else {
+   	    printf("\nScan completed with:\n");
+   	    printf("~ %zu opened ports (%zu not shown)\n",
+   	    ports_scanned, UI_PORT_RANGE_END-UI_PORT_RANGE_START-ports_scanned);
+   	    printf("~ Average accuracy of %05.2f%%\n", average_accuracy/ports_scanned);
+    	
+    }
 
 	inet_close_log_file();
 	
