@@ -1,7 +1,7 @@
 #ifndef PORT_RANGES_H
 #define PORT_RANGES_H
 
-#include "./types.hpp"
+#include "./types.h"
 
 const Port_Range WELL_KNOWN = {0, 1023};
 const Port_Range REGISTERED = {1024, 49151};

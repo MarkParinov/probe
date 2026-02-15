@@ -1,133 +1,280 @@
-// source header
-// #include "./core.hpp"
-// std
+/* source header */
+#include "./core.h"
+/* std */
 #include <stdio.h>
 #include <stdlib.h>
-// strings
+#include <stdint.h>
+/* strings */
 #include <string.h>
-// signals
+/* signals */
 #include <signal.h>
 
-// inet module
+/* inet module */
 #include "../inet/inet.h"
-// inetbus
+/* inetbus */
 #include "../inetbus/inetbus.h"
-// custom types
+/* custom types */
 #include "../types.h"
-// #include "../port_ranges.hpp"
 
-// using namespace std;
-
-void panic(const char* _code) {
-	dprintf(inet_log_fd, "core panic; code='%s'\n", _code);
-	printf("core panic; exiting\n");;
-	inetbus_traceback(_code);
+void core_panic(const char* _code) {
+	printf("\nPROBE core module panic; exit code: '%s'\n", _code);
+	inetbus_traceback("panic");
 
 	exit(1);
 }
 
-void handle_signal(int _sig) {
-	dprintf(inet_log_fd, "captured signal [%d]\n", _sig);
+void core_handle_signal(int _sig) {
+	dprintf(inet_log_fd, "[CORE] captured signal [%d]\n", _sig);
 }
 
-void strip_string(char* _buffer) {
+void core_strip_string(char* _buffer) {
 	size_t i = strlen(_buffer)-1;
-	while (_buffer[i] == '\n' && _buffer[i] == '\r') {
+	while (_buffer[i] == '\n' || _buffer[i] == '\r') {
 		_buffer[i] = 0; i--;
 	}
 }
 
-void global_inetbus_init(const char* _target) {
+void core_init_inetbus(char* _target) {
 	inetbus_init(_target);
 	GlobalInetBus.port = 0;
+	memcpy(inet_lookup_dns(_target, &GlobalInetBus.addr), GlobalInetBus.host_name, 32);
 }
 
-enum Scan_Ret_Code get_port_state(size_t _port) {
+enum Scan_Ret_Code core_get_port_state(size_t _port, size_t _timeout_usec) {
 	GlobalInetBus.port = _port;
 	inetbus_update();
+	int sock = inet_create_stream_socket();
 
-	int sock = inet_create_stream_sock();
-    enum Inet_Ret_Code conn_st = inet_socket_connect(sock);
+    enum Inet_Ret_Code conn_st = inet_connect_socket(sock, _timeout_usec);
     close(sock);
+    
     if (conn_st != INET_SUCCESS)
     	return SCAN_PORT_CLOSED;
     else
     	return SCAN_PORT_OPENED;
 }
 
-enum Scan_Ret_Code scan_port(size_t _port) {
-	// Current algo:
-	// -> connect to a port
-	// -> receive incoming data
-	// -? got any data? (first 10 bytes value >= 0)
-	// |-- YES - print the data
-	// |--  NO - send a dummy packet
+/*	port scanning procedure; file a report */
+void core_scan_port(size_t _port, struct Port_Report* _report) {
+
+	_report->port = _port;
+
+	dprintf(inet_log_fd,
+	"[CORE] starting new core_scan_port instance; port=%ld\n",
+			_port);
 	
 	GlobalInetBus.port = _port;
 	inetbus_update();
 
 	char* recv_buffer = (char*)malloc(128);
 
-    int sock = inet_create_raw_sock();
-    enum Inet_Ret_Code conn_st = inet_socket_connect(sock);
-    if (conn_st != INET_SUCCESS)
-    	return SCAN_PORT_CLOSED;
-    
+    int sock = inet_create_stream_socket();
     if (sock < 0) {
-    	return SCAN_ITERNAL_ERR;
-	}
+    	dprintf(inet_log_fd, "[CORE] failed to create stream socket\n");
+    	close(sock);
+    	_report->state = PORT_UNKNOWN;
+    	return;
+    }
+    
+    enum Inet_Ret_Code conn_st = inet_connect_socket(sock, INET_TIMEOUT_USEC);
+    if (conn_st != INET_SUCCESS) {
+    	dprintf(inet_log_fd, "[CORE] failed to connect socket\n");
+    	close(sock);
+    	_report->state = PORT_CLOSED;
+    	return;
+    }
 	
 	inet_read(sock, recv_buffer, 128, 2);
-	strip_string(recv_buffer);
+	core_strip_string(recv_buffer);
 	if (recv_buffer[0] >= 1 && recv_buffer[1] >= 1) {
-		dprintf(inet_log_fd, 
-				"received data from port=%ld; data='%s'\n",
+		core_strip_string(recv_buffer);
+		dprintf(inet_log_fd,
+				"[CORE] received data from port=%ld; data='%s'\n",
 				_port, recv_buffer);
 
-		dprintf(inet_log_fd, "opened port detected\n");
+		dprintf(inet_log_fd, "[CORE] opened port detected\n");
 		close(sock);
-		return SCAN_PORT_OPENED;
+		_report->state = PORT_OPENED;
+		return;
     } else {
     	enum Inet_Ret_Code code = inet_send(sock, "testing");
     	if (code == INET_SEND_FAILED) {
     		close(sock);
-    		return SCAN_PORT_CLOSED;
+    		_report->state = PORT_FILTERED;
+    		return;
     	}
     	
     	inet_read(sock, recv_buffer, 128, 2);
-    	strip_string(recv_buffer);
+    	core_strip_string(recv_buffer);
     	dprintf(inet_log_fd,
-    			"received data after sending from port=%ld; data='%s'\n",
+    			"[CORE] received data after sending from port=%ld; data='%s'\n",
     			 _port,  recv_buffer);
 
 		close(sock);
-		return SCAN_PORT_OPENED;
+		_report->state = PORT_OPENED;
+		return;
     }
 }
 
-int main() {
-
-	inet_log_fd = inet_open_log_file();
-	dprintf(inet_log_fd, "log entry initiated\n");
+void core_get_server_banner(char* _buffer) {
+	/* intiate a new connection */
+	int sock = inet_create_stream_socket();
+	if (sock < 0)
+		return;
 	
-	dprintf(inet_log_fd, "core started\n");
-    inetbus_init("192.168.1.54");
-    dprintf(inet_log_fd, "inetbus initiated\n");
+	enum Inet_Ret_Code ret = inet_connect_socket(sock, INET_TIMEOUT_USEC);
+	if (ret != 0) {
+		printf("conenction failed\n");
+		return;
+	}
 
-    size_t start = 1;
-    size_t end = 2048;
+	memset(_buffer, 0, SERVICE_BANNER_MAX_LEN);
 
-    for (size_t i = start; i < end; i++) {
-        if (get_port_state(i) == SCAN_PORT_OPENED)
-        	printf("%ld opened\n", i);
-    }
-	// for (auto i : scanned_ports) {
-	// 	cout << i.port << "\t" << i.service << " opened" << endl;
-	// }
+	inet_read(sock, _buffer, SERVICE_BANNER_MAX_LEN, 2);
+	core_strip_string(_buffer);
+	/* printf("received banner: '%s'\n", _buffer); */
+};
 
-	panic("test");
-	inet_close_log_file();
+/*
+	PORT ACCURACY CALCULATION
+*/
+
+/* PTS operations */
+
+struct PTS_Table_Entry ptst[SERVICE_TABLE_MAX_LEN];
+
+void core_add_entry_to_pts_table
+(size_t _port, char _service[SERVICE_NAME_MAX_LEN], size_t _ind) {
+	ptst[_ind].port = _port;
+	memcpy(ptst[_ind].service, _service, SERVICE_NAME_MAX_LEN);
+}
+
+void core_fill_pts_table() {
+	size_t i = 0;
+
+	/* WELL-KNOWN */
+	core_add_entry_to_pts_table(7,		"echo",				i); i++;
+	core_add_entry_to_pts_table(20,		"ftp-data",			i); i++;
+	core_add_entry_to_pts_table(21,		"ftp-control",		i); i++;
+	core_add_entry_to_pts_table(22,		"ssh",				i); i++;
+	core_add_entry_to_pts_table(23,		"telnet",			i); i++;
+	core_add_entry_to_pts_table(24,		"mail",				i); i++;
+	core_add_entry_to_pts_table(53,		"dns",				i); i++;
+	core_add_entry_to_pts_table(80,		"http",				i); i++;
+	core_add_entry_to_pts_table(106,	"MACOS-pass",		i); i++;
+	core_add_entry_to_pts_table(115,	"sftp",				i); i++;
+	core_add_entry_to_pts_table(135,	"MICROSOFT-RPC",	i); i++;
+	core_add_entry_to_pts_table(138,	"netbios-ds",		i); i++;
+	core_add_entry_to_pts_table(139,	"netbios-ss",		i); i++;
+	core_add_entry_to_pts_table(156,	"sql-service",		i); i++;
+	core_add_entry_to_pts_table(199,	"UNIX-snmp",		i); i++;
+	core_add_entry_to_pts_table(312,	"MACOS-xsan",		i); i++;
+	core_add_entry_to_pts_table(443,	"https",			i); i++;
+	core_add_entry_to_pts_table(445,	"MICROSOFT-ds",		i); i++;
+	core_add_entry_to_pts_table(540,	"UNIX-UNIX-cp",		i); i++;
+	core_add_entry_to_pts_table(655,	"tinc-vpn",			i); i++;
+	core_add_entry_to_pts_table(989,	"ftps-data",		i); i++;
+	core_add_entry_to_pts_table(990,	"ftps-control",		i); i++;
+}
+
+void core_match_accur_pts
+(struct Port_Report* _report) {
+	for (size_t i = 0; i < SERVICE_TABLE_MAX_LEN; i++)
+		if (ptst[i].port == _report->port) {
+			if (_report->service[0] == 0) {
+				memcpy(_report->service, ptst[i].service, SERVICE_NAME_MAX_LEN);
+				_report->accur |= PORT_ACCUR_PTS_DIGIT;
+				return;
+			}
+		}
+	memcpy(_report->service, "unknown", SERVICE_NAME_MAX_LEN);
+}
+
+/* BTS operations */
+
+struct BTS_Table_Entry btst[SERVICE_TABLE_MAX_LEN];
+
+void core_add_entry_to_bts_table
+(char _service[SERVICE_NAME_MAX_LEN], char _banner[SERVICE_BANNER_MAX_LEN], size_t _ind) {
+	memcpy(btst[_ind].service, _service, SERVICE_NAME_MAX_LEN);
+	memcpy(btst[_ind].banner, _banner, SERVICE_BANNER_MAX_LEN);
+}
+
+void core_fill_bts_table() {
+	size_t i = 0;
+	core_add_entry_to_bts_table("ftp-control", "220 (vsFTPd", i); i++;
+	core_add_entry_to_bts_table("ssh", "SSH-", i); i++;
+}
+/*	compare a banner pattern in a report entry to the _ind
+	element of the BTS table */
+int core_compare_banners(char _banner[SERVICE_BANNER_MAX_LEN], size_t _ind) {
+	/* create a banner buffer and copy the BTS
+	table's entry banner into it */
+	char buf[SERVICE_BANNER_MAX_LEN];
+	memcpy(buf, btst[_ind].banner, SERVICE_BANNER_MAX_LEN);
+	int flag = 1;
+
+	/* printf("comparing '%s' with '%s'\n", _banner, buf); */
 	
+	size_t i = 0;
+	while (buf[i] == _banner[i]) {
+		if (!buf[i] && !_banner[i]) {
+			flag = 1;
+			break;
+		}
+	
+		if (buf[i] != _banner[i])
+			flag = 0;
+		i++;
+	}
 
-    return 0;
+	/* printf("compare result: %d\n", flag); */
+	return flag;
+}
+
+void core_match_accur_bts
+(char _banner[SERVICE_BANNER_MAX_LEN], struct Port_Report* _report) {
+	if (!strcmp(_report->service, "unknown") || _report->service[0] == 0)
+		return;
+	
+		
+	for (size_t i = 0; i < SERVICE_TABLE_MAX_LEN; i++) {
+		/* printf("%s; %s\n", _report->service, btst[i].service); */
+		if (!strcmp(_report->service, btst[i].service)) {
+			if (core_compare_banners(_banner, i))
+				_report->accur |= PORT_ACCUR_BANNER_DIGIT;
+			return;
+		}
+	}
+}
+
+/* ACCURACY PROCEDURES */
+
+void core_check_tables() {
+	int flag = 0;
+	for (size_t i = 0; i < SERVICE_TABLE_MAX_LEN; i++) {
+		if (!btst[i].service[0]) {
+			flag = 1;
+			break;
+		}
+		flag = 0;
+		/* printf("bts table check: service='%s'; index=%zu ... ",
+				btst[i].service, i);
+		*/
+		for (size_t j = 0; j < SERVICE_TABLE_MAX_LEN; j++) {
+			if (!ptst[j].service[0]) {
+				/* printf("NOT FOUND\n"); */
+				break;
+			}
+			if (!strcmp(btst[i].service, ptst[j].service)) {
+				/* printf("OK\n"); */
+				flag = 1;
+				break;
+			}
+		}
+		if (!flag) {
+			core_panic("table error");
+			return;
+		}
+	}
 }
