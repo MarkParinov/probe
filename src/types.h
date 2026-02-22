@@ -15,7 +15,13 @@
 #define PORT_ACCUR_PTS_DIGIT 	1 << 6
 #define PORT_ACCUR_BANNER_DIGIT	1 << 7
 
-#define INET_TIMEOUT_USEC (size_t)20000
+/*
+optimal TIMEOUT values:
+- remote hosts		- >= 250000
+- local networks 	- around 10000, can be lower
+*/
+
+#define INET_TIMEOUT_USEC (size_t)250000
 
 /*
 	Return codes

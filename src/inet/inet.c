@@ -110,11 +110,11 @@ int inet_create_stream_socket() {
 enum Inet_Ret_Code inet_connect_socket(int _socket, size_t _timeout_usec) {
 	inet_log("connecting socket=%d; port=%ld\n", _socket, GlobalInetBus.port);
 
-    // Set socket to non-blocking
+    /* set socket to non-blocking */
     int flags = fcntl(_socket, F_GETFL, 0);
     fcntl(_socket, F_SETFL, flags | O_NONBLOCK);
     
-    // Initiate connection
+    /* initiate connection */
     int res = connect(_socket,
     (struct sockaddr *)&GlobalInetBus.addr, sizeof(GlobalInetBus.addr));
     
@@ -143,13 +143,12 @@ enum Inet_Ret_Code inet_connect_socket(int _socket, size_t _timeout_usec) {
             }
         }
     } else {
-        // Connection completed immediately (unlikely but possible)
+        /* connection completed immediately (unlikely but possible) */
         fcntl(_socket, F_SETFL, flags);
         return INET_SUCCESS;
     }
     
-    // Timeout or error
-    // Restore blocking mode
+    /* timeout or error; restore blocking mode */
     fcntl(_socket, F_SETFL, flags);
     return INET_TIMEOUT;
 }
@@ -197,22 +196,27 @@ enum Inet_Ret_Code inet_read(int _socket, char* _buffer, size_t _size, size_t _t
     return INET_SUCCESS;
 }
 
-char *inet_lookup_dns(char *_addr_host, struct sockaddr_in *_addr_con) {
+enum Inet_Ret_Code inet_lookup_dns(char *_addr_host, struct sockaddr_in *_addr_con) {
     struct hostent *host_entity;
     char *ip = (char *)malloc(NI_MAXHOST * sizeof(char));
 
     if ((host_entity = gethostbyname(_addr_host)) == NULL) {
-        // No IP found for hostname
-        return NULL;
-    }
+        /* no IP found for hostname */
+       	inet_log("failed to lookup dns\n");
+       	printf("failed to lookup dns\n");
+       	inet_pton(AF_INET, "ERROR", &GlobalInetBus.addr.sin_addr);
+        return INET_ITERNAL_ERR;
+	}
 
     // Fill up address structure
     strcpy(ip, inet_ntoa(*(struct in_addr *)host_entity->h_addr));
     (*_addr_con).sin_family = host_entity->h_addrtype;
     (*_addr_con).sin_port = 0;
-    (*_addr_con).sin_addr.s_addr = *(long *)host_entity->h_addr;
+    (*_addr_con).sin_addr.s_addr = *(long*)host_entity->h_addr;
 
-    return ip;
+	inet_pton(AF_INET, ip, &GlobalInetBus.addr.sin_addr);
+
+    return INET_SUCCESS;
 }
 
 /*

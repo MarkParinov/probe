@@ -6,6 +6,7 @@
 
 #include "../core/core.h"
 #include "../inetbus/inetbus.h"
+#include "../types.h"
 
 /* theoretical max length of a service name to be printed */
 #define UI_SERVICE_PRINT_PADDING 20
@@ -15,7 +16,10 @@
 
 /* print probe info before scan */
 void banner() {
-	printf("PROBE v1.2 scan initiated\n");
+	printf("PROBE scan initiated:\n");
+	printf("~ Build version: v1.2\n");
+	printf("~ Inet timeout: %zu\n", INET_TIMEOUT_USEC);
+
 	char ad[15];
 	inetbus_get_ip_string(ad);
 	printf("~ Target IP: %s\n", ad);
@@ -53,7 +57,10 @@ int main(int argc, char* argv[]) {
 	dprintf(inet_log_fd, "[CORE] core started\n");
 	
 	/* start INETBUS */
-    core_init_inetbus(argv[1]);
+    enum Generic_Ret_Code code = core_init_inetbus(argv[1]);
+    if (code != GEN_SUCCESS)
+    	return 1;
+    	
     dprintf(inet_log_fd, "[CORE] inetbus initiated\n");
 
     banner();
@@ -80,16 +87,23 @@ int main(int argc, char* argv[]) {
 			}
 			
         	struct Port_Report rep; memset(&rep, 0, sizeof(rep));
+        	printf("\r\033[K");
+        	
         	/* set report port */
         	rep.port = i;
+        	printf("\r%zu\t", i);
+        	fflush(stdout);
+
         	/* try to receive a banner */
         	core_get_server_banner(banner_buf);
+        	
         	/* run port matches */
         	core_match_accur_pts(&rep);
         	core_match_accur_bts(banner_buf, &rep);
+
+        	printf("%s", rep.service);
+        	
         	/* print info */
-        	printf("\r\033[K");
-        	printf("\r%zu\t%s", rep.port, rep.service);
         	for (int i = strlen(rep.service); i < UI_SERVICE_PRINT_PADDING; i++)
         		printf(" ");
         	printf("%05.2f%%\n", (float)(rep.accur*100)/255);
@@ -100,13 +114,15 @@ int main(int argc, char* argv[]) {
     }
 
     printf("\r\033[K");
+    char ad[15];
+	inetbus_get_ip_string(ad);
     
     if (!ports_scanned) {
-    	printf("Scan completed with no active ports.\n");
+    	printf("Scan for %s completed with no active ports.\n", ad);
     	printf("Try adjusting the connection timeout in microseconds\n");
 		printf("with a value greater than %zu.\n", INET_TIMEOUT_USEC);
     } else {
-   	    printf("\nScan completed with:\n");
+   	    printf("\nScan for %s completed with:\n", ad);
    	    printf("~ %zu opened ports (%zu not shown)\n",
    	    ports_scanned, UI_PORT_RANGE_END-UI_PORT_RANGE_START-ports_scanned);
    	    printf("~ Average accuracy of %05.2f%%\n", average_accuracy/ports_scanned);

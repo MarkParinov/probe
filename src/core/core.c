@@ -34,10 +34,19 @@ void core_strip_string(char* _buffer) {
 	}
 }
 
-void core_init_inetbus(char* _target) {
+enum Generic_Ret_Code core_init_inetbus(char* _target) {
 	inetbus_init(_target);
 	GlobalInetBus.port = 0;
-	memcpy(inet_lookup_dns(_target, &GlobalInetBus.addr), GlobalInetBus.host_name, 32);
+	char host[32];
+	memset(host, 0, 32);
+	enum Inet_Ret_Code ret = inet_lookup_dns(_target, &GlobalInetBus.addr);
+	
+	if (ret == INET_ITERNAL_ERR) {
+		printf("! Failed to lookup '%s'\n", _target);
+		return GEN_INDEF_ERR;
+	}
+
+	return GEN_SUCCESS;
 }
 
 enum Scan_Ret_Code core_get_port_state(size_t _port, size_t _timeout_usec) {

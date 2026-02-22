@@ -25,7 +25,7 @@ enum Inet_Ret_Code inet_send(int _socket, const char* _buffer);
 enum Inet_Ret_Code inet_read(int _socket, char* _buffer, size_t _size, size_t _timeout_sec);
 
 /* DNS */
-char *inet_lookup_dns(char *_addr_host, struct sockaddr_in *_addr_con);
+enum Inet_Ret_Code inet_lookup_dns(char *_addr_host, struct sockaddr_in *_addr_con);
 
 /* IP header flags in HOST byte order */
 #define INET_IP_RESERVED_FLAG 1 << 15

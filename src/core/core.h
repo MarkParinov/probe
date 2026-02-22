@@ -15,7 +15,7 @@ enum Scan_Ret_Code scan_port(size_t _port);
 void core_panic(const char* _code);
 void core_handle_signal(int _sig);
 void core_strip_string(char* _buffer);
-void core_init_inetbus(char* _target);
+enum Generic_Ret_Code core_init_inetbus(char* _target);
 
 void core_scan_port(size_t _port, struct Port_Report* _report);
 void core_get_server_banner(char* _buffer);
