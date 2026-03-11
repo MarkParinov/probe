@@ -21,7 +21,7 @@ optimal TIMEOUT values:
 - local networks 	- around 10000, can be lower
 */
 
-#define INET_TIMEOUT_USEC (size_t)250000
+#define INET_TIMEOUT_USEC (size_t)100000
 
 /*
 	Return codes
