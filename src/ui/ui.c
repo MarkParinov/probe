@@ -28,8 +28,8 @@ void banner() {
 	/*printf("host name = '%s'\n", GlobalInetBus.host_name);*/
 }
 
-void print_progress(size_t port) {
-    printf("\rprobing %zu port...", port);
+void print_progress(size_t _port) {
+    printf("\rabout %05.2f%% done [port %zu]", (float)_port/(float)(UI_PORT_RANGE_END-UI_PORT_RANGE_START+1)*100, _port);
     fflush(stdout);
 }
 
@@ -119,8 +119,9 @@ int main(int argc, char* argv[]) {
     
     if (!ports_scanned) {
     	printf("Scan for %s completed with no active ports.\n", ad);
-    	printf("Try adjusting the connection timeout in microseconds\n");
-		printf("with a value greater than %zu.\n", INET_TIMEOUT_USEC);
+    	printf("Make sure the host is up and has ports to access.\n");
+    	printf("Also, try adjusting the connection timeout in microseconds\n");
+		printf("with a value greater than %zu (if the host is up).\n", INET_TIMEOUT_USEC);
     } else {
    	    printf("\nScan for %s completed with:\n", ad);
    	    printf("~ %zu opened ports (%zu not shown)\n",
