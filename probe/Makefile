@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-all:
-	g++ src/*/*.cpp -o ./bin/probe
-=======
 CC = gcc
 
 # Set compiler flags
@@ -11,4 +7,3 @@ all: main.o
 
 main.o:
 	gcc $(CFLAGS) src/*/*.c -o ./bin/probe
->>>>>>> tcp_sockets
