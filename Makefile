@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 all:
-	g++ src/*/*.cpp -o ./bin/probe
-=======
-CC = gcc
+	gcc src/*/*.c -o ./bin/probe
 
 # Set compiler flags
 CFLAGS = -Wall -Wextra -g
@@ -11,4 +8,3 @@ all: main.o
 
 main.o:
 	gcc $(CFLAGS) src/*/*.c -o ./bin/probe
->>>>>>> tcp_sockets
