@@ -203,7 +203,6 @@ enum Inet_Ret_Code inet_lookup_dns(char *_addr_host, struct sockaddr_in *_addr_c
     if ((host_entity = gethostbyname(_addr_host)) == NULL) {
         /* no IP found for hostname */
        	inet_log("failed to lookup dns\n");
-       	printf("failed to lookup dns\n");
        	inet_pton(AF_INET, "ERROR", &GlobalInetBus.addr.sin_addr);
         return INET_ITERNAL_ERR;
 	}
@@ -510,6 +509,7 @@ enum Inet_Ret_Code inet_apply_tcp_header
 	
 		return INET_SUCCESS;
 }
+
 /*
 int main() {
 	inet_log_fd = inet_open_log_file();
