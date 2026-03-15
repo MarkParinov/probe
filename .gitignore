@@ -1,6 +1,5 @@
 bin/
 .vscode/
 
-.gitignore
 .inet_log
 probe_demo.mp4
