@@ -13,7 +13,7 @@ $ probe [DOMAIN/IP]
 ### COMPILATION
 After cloning the repo on a local machine, ```$ mkdir bin/; make``` command combination in the root directory will
 create a directory for the executable build and compile the code. Minimal build requirements include:
-* Any standard C compiler, supporting C18
+* Any standard C compiler, supporting C18 **(current makefile script is using g++, make sure to change that in case you are using a different compiler)**
 * Standard UNIX C libraries (*arpa/\*, netinet/\*, sys/\*, etc.*)
 
 Please ignore any warnings that your compiler may throw. The code has been tested in multiple environments,
